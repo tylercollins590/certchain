@@ -8,10 +8,11 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 
-class Blockchain(object):
+
+class Certchain(object):
     def __init__(self):
         self.chain = []
-        self.current_transactions = []
+        self.current_certificates = []
 
         # Create the genesis block
         self.new_block(previous_hash=1, proof=100)
@@ -47,7 +48,7 @@ class Blockchain(object):
 
     def new_block(self, proof, previous_hash=100):
         """
-        Create a new Block in the Blockchain
+        Create a new Block in the Certchain
         :param proof: <int> The proof given by the Proof of Work algorithm
         :param previous_hash: (Optional) <str> Hash of previous Block
         :return: <dict> New Block
@@ -56,32 +57,38 @@ class Blockchain(object):
         block = {
             'index': len(self.chain) + 1,
             'timestamp': time(),
-            'transactions': self.current_transactions,
+            'certificates': self.current_certificates,
             'proof': proof,
             'previous_hash': previous_hash or self.hash(self.chain[-1])
 
         }
 
         # Reset the current list of transactions
-        self.current_transactions = []
+        self.current_certificates = []
 
         self.chain.append(block)
         return block
 
-    def new_transaction(self, sender, recipient, amount):
+    def new_certificate(self, certifier, certifier_name, recipient, certificate_id, certificate_name, expiration_date):
         """
         Creates a new transaction to go into the next mined Block
 
-        :param sender: <str> Address of the Sender
+        :param certifier: <str> Address of the Certifier
+        :param certifier_name: <str> Name of the Certifier
         :param recipient: <str> Address of the Recipient
-        :param amount: <int> Amount
+        :param certificate_id: <int> ID of the certificate
+        :param certificate_name: <str> Name of the certificate
+        :param expiration_date: <date> Expiration date of the certificate
         :return: <int> The index of the Block that will hold this transaction
         """
 
-        self.current_transactions.append({
-            'sender': sender,
+        self.current_certificates.append({
+            'certifier': certifier,
+            'certifier_name': certifier_name,
             'recipient': recipient,
-            'amount': amount
+            'certificate_id': certificate_id,
+            'certificate_name': certificate_name,
+            'expiration_date': expiration_date
         })
 
         return self.last_block['index'] + 1
@@ -109,27 +116,27 @@ app = Flask(__name__)
 # Generate a globally unique address for this node
 node_identifier = str(uuid4()).replace('-', '')
 
-# Instantiate the Blockchain
-blockchain = Blockchain()
+# Instantiate the CertChain
+certchain = Certchain()
 
 
 @app.route('/mine', methods=['GET'])
 def mine():
     # We run the proof of work algorithm to get the next proof...
-    last_block = blockchain.last_block
+    last_block = certchain.last_block
     last_proof = last_block['proof']
-    proof = blockchain.proof_of_work(last_proof)
+    proof = certchain.proof_of_work(last_proof)
 
     # We must receive a reward for finding the proof
-    blockchain.new_transaction(
-        sender="0",
-        recipient=node_identifier,
-        amount=1,
-    )
+    # certchain.new_certificate(
+    #     sender="0",
+    #     recipient=node_identifier,
+    #     amount=1,
+    # )
 
     # Forge the new Block by adding it to the chain
-    previous_hash = blockchain.hash(last_block)
-    block = blockchain.new_block(proof, previous_hash)
+    previous_hash = certchain.hash(last_block)
+    block = certchain.new_block(proof, previous_hash)
 
     response = {
         'message': "New Block Forged",
@@ -142,16 +149,19 @@ def mine():
 
 
 @app.route('/transactions/new', methods=['POST'])
-def new_transaction():
+def new_certificate():
     values = request.get_json()
     print(values)
     # Check that the required fields are in the POST'ed data
-    required = ['sender', 'recipient', 'amount']
+    required = ['certifier', 'certifier_name', 'recipient', 'certificate_id',
+                'certificate_name', 'expiration_date']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
     # Create a new Transaction
-    index = blockchain.new_transaction(values['sender'], values['recipient'], values['amount'])
+    index = certchain.new_certificate(values['certifier'], values['certifier_name'],
+                                      values['recipient'], values['certificate_id'],
+                                      values['certificate_name'], values['expiration_date'])
 
     response = {'message': f'Transaction will be added to the Block {index}'}
     return jsonify(response), 201
@@ -160,8 +170,8 @@ def new_transaction():
 @app.route('/chain', methods=['GET'])
 def full_chain():
     response = {
-        'chain': blockchain.chain,
-        'length': len(blockchain.chain),
+        'chain': certchain.chain,
+        'length': len(certchain.chain),
     }
     return jsonify(response), 200
 
