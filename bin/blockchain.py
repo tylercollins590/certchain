@@ -45,7 +45,6 @@ class Certchain(object):
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == "0000"
 
-
     def new_block(self, proof, previous_hash=100):
         """
         Create a new Block in the Certchain
@@ -109,6 +108,7 @@ class Certchain(object):
         # We must make sure that the Dictionary is Ordered, or we'll have inconsistent hashes
         block_string = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
+
 
 # Instantiate our node
 app = Flask(__name__)
